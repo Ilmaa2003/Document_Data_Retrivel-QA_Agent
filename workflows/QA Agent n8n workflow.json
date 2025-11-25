@@ -1,0 +1,515 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "=/upload_pdf",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "=file"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -224,
+        -80
+      ],
+      "id": "cc80cea4-c962-414a-89e8-d10215faae86",
+      "name": "Webhook",
+      "webhookId": "37af1168-7062-4351-bedb-1a13c75c4041",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "file0",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -16,
+        -80
+      ],
+      "id": "9629ce1a-c6f5-403d-8868-5cbd2a65e8c2",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = items[0].json.text || \"\";\nconst chunkSize = 800;\nlet chunks = [];\nlet start = 0;\n\nwhile (start < text.length) {\n  let end = start + chunkSize;\n  if (end < text.length) {\n    const lastSpace = text.lastIndexOf(\" \", end);\n    if (lastSpace > start) end = lastSpace;\n  }\n  chunks.push(text.slice(start, end));\n  start = end;\n}\n\nreturn chunks.map((chunk, index) => ({\n  json: { id: index, chunk }\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        -80
+      ],
+      "id": "306e4179-9afd-4214-904e-959b29f1e6ab",
+      "name": "Split Text into Chunks"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-goog-api-key",
+              "value": "AIzaSyAQDdGh5rQaYGi8CHuv_oZ1yipw-DM9rqc"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={   \"model\": \"models/text-embedding-004\",   \"content\": {     \"parts\": [       {         \"text\": \"{{$json['chunk']}}\"       }     ]   } }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        448,
+        -272
+      ],
+      "id": "a649f8ff-767e-4d85-bbf3-7fadee4d1c0b",
+      "name": "HTTP Request5"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://doc-qa-n4ktero.svc.aped-4627-b74a.pinecone.io/vectors/upsert",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pineconeApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ JSON.stringify({ vectors: $items().map(i => i.json) }) }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1168,
+        -96
+      ],
+      "id": "c7cfe529-c9c1-4e57-a417-fa3d61cec02d",
+      "name": "HTTP Request1",
+      "credentials": {
+        "pineconeApi": {
+          "id": "CUhE5LSvWzTngyL0",
+          "name": "Pinecone_API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        704,
+        -96
+      ],
+      "id": "eb09c3a6-c47c-4127-9b0e-eb8cbe989665",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Function node\nreturn items.map(item => ({\n  json: {\n    id: \"chunk-\" + item.json.id,\n    values: item.json.embedding.values,\n    metadata: { text: item.json.chunk }\n  }\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        -96
+      ],
+      "id": "5e00fca9-e04b-42e5-bd7b-dceb4c7388ef",
+      "name": "Split Text into Chunks1"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"success\",\n  \"message\": \"Document indexed successfully\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1408,
+        -96
+      ],
+      "id": "5770b4a4-ad73-40fd-9a85-2a0bccbb089e",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "=/ask_question",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "question"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -48,
+        224
+      ],
+      "id": "44a4646d-6017-4b87-ae8a-c0160a64bef0",
+      "name": "Webhook1",
+      "webhookId": "37af1168-7062-4351-bedb-1a13c75c4041",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-goog-api-key",
+              "value": "AIzaSyAQDdGh5rQaYGi8CHuv_oZ1yipw-DM9rqc"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={\n  \"model\": \"models/text-embedding-004\",\n  \"content\": {\n    \"parts\": [\n      { \"text\": \"{{$json['body']['question']}}\" }\n    ]\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        224,
+        224
+      ],
+      "id": "517d6d4b-5776-44f9-b619-8bb2820cccbd",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://doc-qa-n4ktero.svc.aped-4627-b74a.pinecone.io/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pineconeApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ JSON.stringify({\n  vector: $json.embedding.values,\n  topK: 5,\n  includeMetadata: true\n}) }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        480,
+        224
+      ],
+      "id": "6afe7b0a-0362-4c90-a7a6-dff61e344142",
+      "name": "HTTP Request2",
+      "credentials": {
+        "pineconeApi": {
+          "id": "CUhE5LSvWzTngyL0",
+          "name": "Pinecone_API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1824,
+        416
+      ],
+      "id": "ba226ce4-724f-475a-ab7c-c717d2481475",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      question: $input.item.json.body.question\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        480
+      ],
+      "id": "88eb5629-f13d-4073-8cbe-8ed6c950ca66",
+      "name": "Split Text into Chunks3"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      context: $json.matches.map(m => m.metadata.text).join(\"\\n\\n\"),\n      question: $json.question\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        224
+      ],
+      "id": "8a806c74-9e0c-42b9-9bd8-585ced6a1c97",
+      "name": "context"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        992,
+        432
+      ],
+      "id": "16c733ae-743f-4451-bd03-230ed912184f",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Question: {{$json[\"question\"]}}\nContext: {{$json[\"context\"]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        432
+      ],
+      "id": "5c1bc3bf-8c86-4174-8f79-c267824be237",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "EwWtYDcTf7XiRtaU",
+          "name": "Gemini_API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Split Text into Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Text into Chunks": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request5",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "HTTP Request5": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Split Text into Chunks1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Text into Chunks1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Split Text into Chunks3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "context": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Text into Chunks3": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "662f252d-75f5-4f9c-84f2-7dc570267a69",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3d05271b44f854daeec5a5332701d9b96bfc94d6dabff570e595f755e9c56159"
+  },
+  "id": "qWjsUWy4QIpaed7Q",
+  "tags": []
+}
