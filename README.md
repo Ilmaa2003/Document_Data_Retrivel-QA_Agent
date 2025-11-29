@@ -1,6 +1,11 @@
 
 # AI Agent: Document Q&A / Info Retrieval
 
+<img width="1527" height="633" alt="Screenshot 2025-11-25 025418" src="https://github.com/user-attachments/assets/a04c1f04-bb55-428f-abd5-dd75e58c7bf7" />
+
+<img width="1919" height="854" alt="image" src="https://github.com/user-attachments/assets/24333112-4d74-4ae9-8fe4-3686ba7c613f" />
+
+
 ## Project Overview
 This project implements an AI-powered agent designed to provide accurate answers from uploaded documents (PDFs). It converts unstructured document content into structured, actionable responses and supports multi-turn queries.
 
